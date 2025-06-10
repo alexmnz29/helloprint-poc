@@ -23,11 +23,19 @@ git clone https://github.com/your-org/helloprint-quote-poc.git
 cd helloprint-quote-poc
 ```
 
-## 2. Makefile commands
-
 UV has been selected as package & project manager tool, please install it in order to launch the demo. 
 
 Installation guide: https://docs.astral.sh/uv/getting-started/installation/
+
+```bash
+make env   # 1. Create the uv virtual-env and install deps
+make data  # 2. Generate synthetic data
+make train # 3. Train XGBoost model
+make hpo   # (Optional) Run Optuna hyper-parameter optimization
+make ui    # 4. Launch the Streamlit demo  (http://localhost:8501)
+```
+
+## 2. Makefile commands
 
 
 ```bash
