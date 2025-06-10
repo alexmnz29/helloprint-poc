@@ -1,5 +1,7 @@
-# src/app.py — slider in sidebar, uploader in main panel
+# src/app.py
 import json
+import random
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -12,8 +14,8 @@ from inference import InferenceEngine
 MODEL_PATH = Path("model.joblib")
 LOGO_PATH  = Path("assets/helloprint_logo.png")
 
-BLACK        = "#111111"
-DARK_ORANGE  = "#CC7A00"  # for slider & button
+BLACK       = "#111111"
+DARK_ORANGE = "#CC7A00"
 
 # ------------------------------------------------------------------ #
 # Page config
@@ -22,19 +24,12 @@ st.set_page_config(page_title="HelloPrint • Quote Optimiser",
                    page_icon="🖨️", layout="wide")
 
 # ------------------------------------------------------------------ #
-# Global + component CSS
+# Minimal CSS (slider styling only; other colours via theme)
 # ------------------------------------------------------------------ #
 st.markdown(
     f"""
     <style>
-      .stApp {{ background:#FFFFFF; color:{BLACK}; font-family:Inter,sans-serif; }}
-
-      /* sidebar backdrop + text */
-      section[data-testid="stSidebar"] > div:first-child {{ background:#2B2B2B !important; }}
-      section[data-testid="stSidebar"] > div:first-child * {{ color:#F5F5F5 !important; }}
-
-      /* slider (orange rail/track/handle) */
-      .stSlider .rc-slider-rail   {{ background:{DARK_ORANGE} !important; height:6px; }}
+      .stSlider .rc-slider-rail   {{ background:{DARK_ORANGE}!important; height:6px; }}
       .stSlider .rc-slider-track {{ background:{DARK_ORANGE}; height:6px; }}
       .stSlider .rc-slider-handle {{
         background:{DARK_ORANGE}; border:2px solid {DARK_ORANGE};
@@ -48,65 +43,94 @@ st.markdown(
 # ------------------------------------------------------------------ #
 # Header
 # ------------------------------------------------------------------ #
-c1, c2, c3 = st.columns([1, 4, 1])
-with c2:
+left, mid, logo = st.columns([1, 4, 1])
+with mid:
     st.markdown("<h1 style='text-align:center;margin-bottom:0.2rem;'>"
-                "Quote&nbsp;Optimiser&nbsp;Demo</h1>", unsafe_allow_html=True)
-with c3:
+                "Quote Optimiser Demo</h1>", unsafe_allow_html=True)
+with logo:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), width=140)
 st.divider()
 
 # ------------------------------------------------------------------ #
-# SIDEBAR – only the slider
+# Sidebar – margin floor slider
 # ------------------------------------------------------------------ #
 with st.sidebar:
     st.markdown("**Margin floor (%)**")
-    margin_floor = st.slider("", 5, 40, 15) / 100
+    margin_floor = st.slider("", 5, 40, 20) / 100
 
 # ------------------------------------------------------------------ #
-# MAIN  –  explanation + uploader side-by-side
+# Explanation block (always visible)
 # ------------------------------------------------------------------ #
-explain_col, upload_col = st.columns([3, 1], gap="large")
+st.subheader("How this demo works")
+st.markdown(
+    """
+**End-to-end flow (mocked)**  
 
-with explain_col:
-    st.subheader("How this demo works")
-    st.markdown(
-        """
-1. **Upload data** – Provide a JSON file with one or more supplier offers for the *same* RFQ.  
-2. **Feature engineering** – The app derives price competitiveness, lead-time delta, quantity log scale and supplier reliability.  
-3. **Probability model** – A trained XGBoost model estimates the acceptance probability (*p*<sub>win</sub>) for each offer.  
-4. **Optimiser** – A linear solver picks a single offer that maximises *p*<sub>win</sub> × margin while respecting the margin slider.  
-5. **Results** – The ranked table shows all offers; the panel on the right highlights the chosen supplier and metrics.
+1. **Upload RFQ PDF** – Treat it as the customer’s request.
+2. **Mock OCR & supplier shortlist** – The demo pretends to extract product, quantity, deadline and finds compatible suppliers.  
+3. **Win-probability model** – A pre-trained XGBoost model scores each offer.  
+4. **Margin-constrained optimiser** – Picks the offer that maximises *p*<sub>win</sub> × margin while meeting the slider threshold.  
+5. **Results** – Shows RFQ summary, ranked supplier table, selected offer and CSV download.
 
-*Everything runs locally; no external services are called.*
-        """
-    )
-
-with upload_col:
-    st.subheader("Upload offers")
-    uploaded = st.file_uploader(
-        label="Browse&nbsp;files",
-        label_visibility="hidden",
-        type=["json"],
-        accept_multiple_files=False,
-        help="Upload a JSON file exported from your RFQ parser"
-    )
+> All computation is local.
+"""
+)
 
 # ------------------------------------------------------------------ #
-# Load model
+# Helper functions
 # ------------------------------------------------------------------ #
-if not MODEL_PATH.exists():
-    st.error("model.joblib not found.  Run `make train` first.")
-    st.stop()
+PRODUCTS = ["flyer", "poster", "t-shirt"]
+REGIONS = ["NL", "DE", "FR", "ES"]
 
-engine = InferenceEngine(MODEL_PATH, margin_floor=margin_floor)
+def mock_parse_pdf() -> dict:
+    return {
+        "client_id": f"C-{random.randint(100, 999)}",
+        "region": random.choice(REGIONS),
+        "product_type": random.choice(PRODUCTS),
+        "quantity": random.choice([500, 1000, 1500, 2000]),
+        "deadline": (date.today() + timedelta(days=14)).isoformat(),
+    }
+
+def mock_offers(rfq: dict, n: int = 6) -> pd.DataFrame:
+    base_price = random.uniform(1.2, 1.8)
+    rows = []
+    for _ in range(n):
+        rows.append({
+            "supplier_id": random.randint(1, 30),
+            "product_type": rfq["product_type"],
+            "unit_price": round(base_price * random.uniform(0.9, 1.15), 2),
+            "lead_time_days": random.randint(4, 10),
+            "quoted_margin_pct": round(random.uniform(0.18, 0.30), 2),
+            "quantity": rfq["quantity"],
+            "tier": random.choice(["A", "B", "C"]),
+            "region": rfq["region"],
+            "on_time_rate": round(random.uniform(0.88, 0.98), 2),
+        })
+    return pd.DataFrame(rows)
 
 # ------------------------------------------------------------------ #
-# MAIN LOGIC
+# Step 1 – Upload RFQ PDF
 # ------------------------------------------------------------------ #
-if uploaded:
-    offers_df = pd.DataFrame(json.load(uploaded))
+st.subheader("1. Upload RFQ (PDF)")
+pdf_file = st.file_uploader("Choose a PDF", type=["pdf"])
+
+if pdf_file:
+    rfq = mock_parse_pdf()
+    st.table(pd.DataFrame([rfq]))
+
+# ------------------------------------------------------------------ #
+# Step 2 – Request quotation
+# ------------------------------------------------------------------ #
+st.subheader("2. Request quotation")
+if pdf_file and st.button("Calculate best offer"):
+    offers_df = mock_offers(rfq)
+
+    # ---- load model
+    if not MODEL_PATH.exists():
+        st.error("model.joblib not found. Run `make train` first.")
+        st.stop()
+    engine = InferenceEngine(MODEL_PATH, margin_floor=margin_floor)
 
     try:
         best, ranked = engine.select_best_offer(offers_df)
@@ -114,27 +138,45 @@ if uploaded:
         st.error(f"🚫 {e}")
         st.stop()
 
+    # ---- prepare ranked display
     ranked["margin %"] = (ranked["quoted_margin_pct"] * 100).round(1)
     ranked["p(win) %"] = (ranked["p_win"] * 100).round(1)
     ranked = ranked.rename(columns={
         "supplier_id": "Supplier",
-        "unit_price":  "€ / unit",
+        "unit_price": "€ / unit",
         "lead_time_days": "Lead-time (days)",
         "utility": "Utility",
     })
     cols = ["Supplier", "€ / unit", "Lead-time (days)", "margin %", "p(win) %", "Utility"]
 
-    tbl_col, met_col = st.columns([3, 1], gap="large")
-    with tbl_col:
+    table_col, metric_col = st.columns([3, 1], gap="large")
+    with table_col:
         st.subheader("Ranked offers")
         st.dataframe(ranked[cols], hide_index=True, use_container_width=True)
 
-    with met_col:
+    with metric_col:
         st.subheader("Selected offer")
-        st.metric("Supplier", best["supplier_id"])
-        st.metric("Win probability", f"{best['p_win']:.0%}")
-        st.metric("Margin", f"{best['margin_pct']:.0%}")
 
-        csv = ranked.to_csv(index=False).encode()
+        # metrics in one horizontal row
+        c_sup, c_win, c_margin = st.columns(3)
+        c_sup.metric("Supplier", best["supplier_id"])
+        c_win.metric("Win probability", f"{best['p_win']:.0%}")
+        c_margin.metric("Margin", f"{best['margin_pct']:.0%}")
+
+        # rationale expander
+        with st.expander("Why this offer?", expanded=False):
+            st.markdown(
+                f"""
+* **Highest expected value** – Maximises *p*<sub>win</sub> ({best['p_win']:.0%}) × margin ({best['margin_pct']:.0%}).  
+* **Meets margin floor** – Above the minimum of **{int(margin_floor*100)} %**.  
+* Alternatives have lower expected value or fail the margin rule.
+""",
+                unsafe_allow_html=True,
+            )
+
+        # download button
+        csv = ranked[cols].to_csv(index=False).encode()
         st.download_button("Download CSV", csv, "ranked_offers.csv",
                            mime="text/csv", use_container_width=True)
+else:
+    st.info("Upload a PDF and click *Calculate best offer* to see results.")
