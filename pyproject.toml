@@ -1,0 +1,21 @@
+[project]
+name = "helloprint-poc"
+version = "0.1.0"
+description = "HelloPrint Home Assignment PoC: sythetic data → ML → optimisation → UI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faker>=37.3.0",
+    "joblib>=1.5.1",
+    "mlflow>=2.22.0",
+    "optuna>=4.3.0",
+    "optuna-integration[mlflow]>=4.3.0",
+    "pandas>=2.3.0",
+    "pulp>=3.2.1",
+    "pytest>=8.4.0",
+    "scikit-learn>=1.7.0",
+    "shap>=0.47.2",
+    "streamlit>=1.45.1",
+    "streamlit-shap>=1.0.2",
+    "xgboost>=3.0.2",
+]
