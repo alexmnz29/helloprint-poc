@@ -51,19 +51,7 @@ make test        # run unit tests with pytest
 make clean       # delete generated CSVs, model.joblib and mlruns/
 ```
 
-## 3. Folder Structure
-.
-├── src/
-│   ├── synthetic_generator.py   # create data
-│   ├── features.py              # joins + sklearn pipeline
-│   ├── train.py                 # trains XGBoost, logs to MLflow, saves model.joblib
-│   ├── inference.py             # scoring + LP optimiser
-│   └── hpo.py                   # hyperparameter optimization with Optuna + logs to MLFlow
-|   └── app.py                   # Streamlit UI
-├── test/                        # fitted Pipeline (prep + XGBoost)
-└── .streamlit/config.toml       # UI theme
-
-## 4. Sample RFQ PDF
+## 3. Sample RFQ PDF
 
 Any PDF will do.
 The app mock-parses it into a dictionary like:
@@ -78,7 +66,7 @@ The app mock-parses it into a dictionary like:
 }
 ```
 
-# 5. Tech stack
+# 4. Tech stack
 
 | Layer                | Tools                         |
 |-----------------------|-------------------------------|
@@ -89,7 +77,7 @@ The app mock-parses it into a dictionary like:
 | UI                    | Streamlit + custom CSS        |
 | Dependency manager    | uv (uv venv, uv sync)         |
 
-## 6. Limitations & next steps
+## 5. Limitations & next steps
 - OCR, supplier API calls, and PDF generation are mocked.
 - Only one offer is selected.
 - Model retraining is manual (run train.py); no CI-trigger yet.
