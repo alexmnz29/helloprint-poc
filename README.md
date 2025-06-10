@@ -25,6 +25,11 @@ cd helloprint-quote-poc
 
 ## 2. Makefile commands
 
+UV has been selected as package & project manager tool, please install it in order to launch the demo. 
+
+Installation guide: https://docs.astral.sh/uv/getting-started/installation/
+
+
 ```bash
 make help        # list all available targets
 
