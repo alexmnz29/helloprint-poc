@@ -7,7 +7,6 @@ Run with:  uv shell && python src/train.py
 
 import joblib
 import mlflow
-import mlflow.sklearn
 import xgboost as xgb
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
