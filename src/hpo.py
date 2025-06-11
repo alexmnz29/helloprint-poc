@@ -5,11 +5,6 @@ Hyper-parameter optimisation for the HelloPrint MVP.
 * Uses Optuna (TPE sampler) to tune XGBoost params.
 * Logs every trial to MLflow via the MLflowCallback.
 * Persists the best Pipeline as model.joblib.
-
-Run:
-    uv pip install optuna mlflow
-    uv shell
-    python src/hpo.py --trials 30
 """
 
 from __future__ import annotations
@@ -17,8 +12,6 @@ import argparse
 import joblib
 import optuna
 from optuna.integration.mlflow import MLflowCallback
-
-import mlflow
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline

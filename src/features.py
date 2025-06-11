@@ -6,12 +6,10 @@ that transforms them into a feature matrix suitable for XGBoost.
 
 from pathlib import Path
 from typing import Tuple
-
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
 
 DATA_DIR = Path("data/synthetic")
 
